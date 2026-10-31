@@ -234,6 +234,7 @@
         <div class="status" aria-label="Quiz status">
           <span id="question-count">Question 1 of 10</span>
           <span>Score: <strong id="score">0</strong></span>
+          <span>Best: <strong id="best-score">0</strong></span>
         </div>
         <div class="progress-track" role="progressbar" aria-label="Quiz progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
           <div class="progress-fill"></div>
@@ -276,15 +277,49 @@
       const resultsScreen = document.querySelector("#results-screen");
       const countLabel = document.querySelector("#question-count");
       const scoreLabel = document.querySelector("#score");
+      const bestScoreLabel = document.querySelector("#best-score");
       const progress = document.querySelector(".progress-track");
       const progressFill = document.querySelector(".progress-fill");
       const questionHeading = document.querySelector("#question");
       const answersElement = document.querySelector("#answers");
       const feedback = document.querySelector("#feedback");
       const nextButton = document.querySelector("#next-button");
+      function loadBestScore() {
+        try {
+          const savedBestScore = localStorage.getItem("spaceQuizBestScore");
+          const parsedBestScore = Number(savedBestScore);
+          return savedBestScore !== null
+            && Number.isInteger(parsedBestScore)
+            && parsedBestScore >= 0
+            && parsedBestScore <= questions.length
+            ? parsedBestScore
+            : 0;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "SecurityError") {
+            console.warn("Unable to read the saved best score.", error);
+            return 0;
+          }
+          throw error;
+        }
+      }
+
+      function saveBestScore() {
+        try {
+          localStorage.setItem("spaceQuizBestScore", bestScore);
+        } catch (error) {
+          if (error instanceof DOMException && ["SecurityError", "QuotaExceededError"].includes(error.name)) {
+            console.warn("Unable to save the best score.", error);
+            return;
+          }
+          throw error;
+        }
+      }
+
       let questionIndex = 0;
       let score = 0;
+      let bestScore = loadBestScore();
       let answered = false;
+      bestScoreLabel.textContent = bestScore;
 
       function renderQuestion() {
         const current = questions[questionIndex];
@@ -322,6 +357,11 @@
         if (selectedIndex === current.correct) {
           score += 1;
           scoreLabel.textContent = score;
+          if (score > bestScore) {
+            bestScore = score;
+            bestScoreLabel.textContent = bestScore;
+            saveBestScore();
+          }
           feedback.textContent = `Correct! ${current.fact}`;
           feedback.classList.add("is-correct");
         } else {
